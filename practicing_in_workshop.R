@@ -230,11 +230,115 @@ read_csv_arrow("data/taxi_zone_lookup.csv", as_data_frame = FALSE) %>%
   collect()
 
 
+## working with date times ------
+
+nyc_taxi %>%
+  filter(
+    year == 2022,
+    month == 1
+  ) %>%
+  mutate(
+    day = day(pickup_datetime),
+    weekday = wday(pickup_datetime, label = TRUE),
+    hour = hour(pickup_datetime),
+    minute = minute(pickup_datetime),
+    second = second(pickup_datetime)
+  ) %>%
+  filter(
+    hour == 3,
+    # minute == 14,
+    # second == 15
+  ) %>%
+  select(
+    pickup_datetime, year, month, day, weekday, hour
+  ) %>%
+  collect()
 
 
+## Two table computations -----
+
+location <- arrow_table(
+  island = c("Trogersen", "Biscoe", "Dream"),
+  lon = c(-64.11, -65.43, -64.73),
+  lat = c(-64.08, -65.50, -64.23)
+)
+
+penguins %>%
+  arrow_table() %>%
+  left_join(location) %>%
+  select(species, island, bill_length_mm, lon, lat) %>%
+  collect()
 
 
+pickup <- nyc_taxi_zones %>%
+  select(
+    pickup_location_id = location_id,
+    pickup_borough = borough
+  )
+
+nyc_taxi %>%
+  left_join(pickup) %>%
+  collect()
 
 
+nyc_taxi$schema
+arrow_table(pickup)$schema
 
+# now pickup_location_id variable is not of same type in both nyc_taxi and
+# nyc_taxi_zones arrow data
+
+# to set it same
+
+nyc_taxi_zones <- nyc_taxi_zones %>%
+  as_arrow_table(
+    schema = schema(
+      location_id = int64(),
+      borough = utf8(),
+      zone = utf8(),
+      service_zone = utf8()
+    )
+  )
+
+
+pickup <- nyc_taxi_zones %>%
+  select(
+    pickup_location_id = location_id,
+    pickup_borough = borough
+  )
+
+dropoff <- nyc_taxi_zones %>%
+  select(
+    dropoff_location_id = location_id,
+    dropoff_borough = borough
+  )
+
+
+tic()
+borough_counts <- nyc_taxi %>%
+  left_join(pickup) %>%
+  left_join(dropoff) %>%
+  count(pickup_borough, dropoff_borough) %>%
+  arrange(desc(n)) %>%
+  collect()
+toc()
+
+## Exercise----
+
+nyc_taxi_zones %>%
+  select(zone) %>%
+  filter(str_detect(zone, "Airport")) %>%
+  collect()
+
+pickup_location <- nyc_taxi_zones %>%
+  select(
+    pickup_location_id = location_id,
+    pickup_zone = zone
+  )
+
+nyc_taxi %>%
+  filter(year == 2019) %>%
+  left_join(pickup_location) %>%
+  filter(str_detect(pickup_zone, "Airport")) %>%
+  count(pickup_zone) %>%
+  collect()
 
