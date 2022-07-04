@@ -389,3 +389,63 @@ numerology <- nyc_taxi %>%
   select(trip_id, magic_number, pickup_datetime) %>%
   collect()
 toc()
+
+
+# part 3: Data storage ----------------------------------------------------
+
+parquet_file <- "data/nyc-taxi-tiny/year=2019/month=9/part-0.parquet"
+
+nyc_taxi_2019_09 <- read_parquet(parquet_file)
+
+class(nyc_taxi_2019_09) # tibble
+
+parquet_file %>%
+  read_parquet(col_select = matches("pickup"))
+
+
+tic()
+parquet_file %>%
+  read_parquet() %>%
+  invisible()
+toc()
+
+tic()
+parquet_file %>%
+  read_parquet(col_select = matches("pickup")) %>%
+  invisible()
+toc()
+
+
+## part3: exercise
+
+tic()
+nyc_taxi_2019_09 %>% write_csv_arrow("data/nyc_taxi_2019_09.csv")
+toc()
+
+fs::file_size("data/nyc_taxi_2019_09.csv")
+
+tic()
+nyc_taxi_2019_09 %>% write_parquet("data/nyc_taxi_2019_09.parquet")
+toc()
+
+fs::file_size("data/nyc_taxi_2019_09.parquet")
+
+
+tic()
+read_csv_arrow("data/nyc_taxi_2019_09.csv")
+toc() # 0.19 sec
+
+tic()
+read_csv_arrow("data/nyc_taxi_2019_09.csv", as_data_frame = FALSE)
+toc() # 0.11 sec
+
+tic()
+read_parquet("data/nyc_taxi_2019_09.parquet")
+toc() # 0.1 sec
+
+tic()
+read_parquet("data/nyc_taxi_2019_09.parquet", as_data_frame = FALSE)
+toc() # 0.04 sec
+
+
+
