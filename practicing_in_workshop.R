@@ -342,3 +342,50 @@ nyc_taxi %>%
   count(pickup_zone) %>%
   collect()
 
+
+# duckdb and window funcition ---------------------------------------------
+
+tic()
+penguins %>%
+  mutate(
+    id = row_number()
+  ) %>%
+  filter(is.na(sex)) %>%
+  select(id, sex, species, island)
+toc()
+
+# dplyr::row_number() is not supported in Arrow
+
+# Engine supplied by Arrow c++ library doesn't support window function currently
+
+# But duckdb engine does support window function
+
+tic()
+penguins %>%
+  arrow_table() %>%
+  to_duckdb() %>%
+  mutate(id = row_number()) %>%
+  filter(is.na(sex)) %>%
+  select(id, sex, species, island)
+toc()
+
+
+tic()
+numerology <- nyc_taxi %>%
+  to_duckdb() %>%
+  window_order(pickup_datetime) %>%
+  mutate(trip_id = row_number()) %>%
+  filter(
+    trip_id %>% as.character() %>% str_detect("59"),
+    second(pickup_datetime) == 59,
+    minute(pickup_datetime) == 59
+  ) %>%
+  mutate(
+    magic_number = trip_id %>%
+      as.character() %>%
+      str_remove_all("[^59]") %>%
+      as.integer()
+  ) %>%
+  select(trip_id, magic_number, pickup_datetime) %>%
+  collect()
+toc()
